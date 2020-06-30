@@ -519,4 +519,25 @@ Some models gives significantly better results for the moment (more testing is n
 Two hyper-parameters values as been tested for all models, the value of $\alpha$, and the type of distribution.
 A global remark is that $\alpha$ modify a lot the results in term of metrics. The value of \textit{bandwidth } and \textit{Coverage} is proportional to $\alpha$ value, which is in agreement with theory.
 
+\section{Implementation and Results}
+
+\subsection{Testing protocol definition}
+
+Each comparison is presented using as element of comparison the metrics defined in section \ref{metrics}
+The plot results are all presented with the same values of quantiles of the the predicted distribution, along the predicted window.
+
+\subsection{Hyperparameters comparison}
+
+\subsection{Learning rate}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=200px]{plots/hist/a/cSimple/n_cell/bandwidth.png}
+    \includegraphics[width=200px]{plots/hist/a/cSimple/n_cell/Coverage.png}
+    \includegraphics[width=300px]{plots/scatter/a/cSimple/n_cell/Coverage_bandwidth.png}
+    \caption{Comparison of different learning rate (Model: Simple (Default parameter values), Epochs:100, $\alpha$ = 0.9, Distribution = Gaussian, Config A)}
+    \label{fig:gausslaplace}
+\end{figure}
+\subsection{Different models parameters comparison}
+
 \end{document}

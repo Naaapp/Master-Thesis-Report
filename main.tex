@@ -759,17 +759,7 @@ The desription of this model is done in section
     \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/GaussianProcess/180.png}
     \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/GaussianProcess/60.png}
     \caption{Forecast result of Gaussian Process model at 3 hours and 1 hour scale (, Epochs = 100, Distribution = Gaussian, Config A)}
-    \label{fig:mqrnn}
-\end{figure}
-
-\subsubsection{Gaussian Process} \label{comp_gp}
-
-\begin{figure}[!h]
-    \centering
-    \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/GaussianProcess/180.png}
-    \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/GaussianProcess/60.png}
-    \caption{Forecast result of Gaussian Process model at 3 hours and 1 hour scale (Epochs = 100, Distribution = Gaussian, Config A)}
-    \label{fig:mqrnn}
+    \label{fig:gp}
 \end{figure}
 
 
@@ -779,10 +769,30 @@ The desription of this model is done in section
     \centering
     \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/NPTS/180.png}
     \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/NPTS/60.png}
-    \caption{Forecast result of NPTS model at 3 hours and 1 hour scale (Epochs = 100, Distribution = Gaussian, Config A)}
-    \label{fig:mqrnn}
+    \caption{Forecast result of NPTS model at 3 hours and 1 hour scale (Epochs = 100, Config A)}
+    \label{fig:npts}
 \end{figure}
 
+\subsubsection{ETS} \label{comp_ets}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/NPTS/180.png}
+    \includegraphics[width=400px]{plots/forecast/a/model/Gaussian/0_9/NPTS/60.png}
+    \caption{Forecast result of ETS model at 3 hours and 1 hour scale (Epochs = 100, Config A)}
+    \label{fig:ets}
+\end{figure}
+
+\subsection{Global comparison}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=200px]{plots/hist/a/model/0_9/Gaussian/Coverage.png}
+    \includegraphics[width=200px]{plots/hist/a/model/0_9/Gaussian/bandwidth.png}
+    \includegraphics[width=300px]{plots/scatter/a/model/0_9/Gaussian/Coverage_bandwidth.png}
+    \caption{Comparison of different models (Epochs = 100, Distribution = Gaussian, Config A)}
+    \label{fig:comp_mqcnn}
+\end{figure}
 
 
 

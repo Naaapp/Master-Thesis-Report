@@ -1,0 +1,259 @@
+
+\section{Introduction and problem definition} \label{part1}
+
+\subsection{Introduction} \label{intro}
+
+\textit{Blacklight Analytics} is a enterprise that develop solutions regarding the management of electrical distribution networks. 
+Distribution systems
+need to integrate more and more renewable generation in their network. Since networks cannot be quickly upgraded and at low cost, new generators are connected to the network under non-firm access contract. The assets used in networks have been designed to transmit power in one direction, from the global network to the local network. This configuration implies situations where the high production creates congestion problems in the assets, while energy generated must be injected into the global network . There is
+a need for a practical method able to compute the production limits of the generators such that the system can be considered safe, i.e has a very low probability that the electrical power flowing through one asset is higher than the maximum tolerated power is this asset.
+
+
+Blacklight Analytics develops a solution to 
+this problem. The method cast the problem into a stochastic decision process. This process is divided in three phases : (i) generation of a network model, (ii) forecasting of the power produced or consumed and (iii) computation of the generator limits. The phase 2 takes as input historical measurements of the networks and output future production probability distribution for each sources. This output will be used to define generator limits.
+In the current implementation, the forecasting method uses Gaussian process regression to forecast individually each source and combine information using covariance estimation. 
+This master thesis subject addresses the question of what is the best forecasting method to implement in this described context, and what are the elements of comparison that allows us to make these affirmation. The growing scientific field of Deep Learning has a great potential to be exploited to achieve this goal. 
+
+Therefore, the concrete goal of this Master Thesis is the comparison of different probabilistic forecasting models and techniques, mostly from the deep learning scientific field,
+in the context of the prediction of renewable energy production.
+
+\subsection{Related Works}
+
+
+Time series forecasting is a well-defined and extensively explored scientific field. It is considered as part of the probabilities scientific field for many years, from very simple or naive forecasting models (\textit{Naive}, \textit{Seasonal Naive}, \textit{Moving Average}, etc) \cite{forecasting_principle1} to more complex models as the \textit{Autoregressive integrated moving average} (\textit{ARIMA}) \cite{forecasting_principle2} or \textit{Exponential smoothing}, introduced by statistician Robert Goodell Brown in 1956 \cite{smooth_for}.
+\textit{Exponential smoothing} and \textit{ARIMA} models are the two most widely used approaches to time series forecasting, and provide complementary approaches to the problem. While \textit{exponential smoothing} models are based on a description of the trend and seasonality in the data, \textit{ARIMA} models aim to describe the autocorrelations in the data.
+
+Probabilistic time series forecasting stems from point time series forecasting. For instance, \textit{ETS} forecasting is an \textit{exponential smoothing} method that can generate point but also intervals prediction \cite{exp_smooth}. 
+
+In recent years, advances in deep learning has led to interesting results in probabilistic forecasting field. Recent publications (\cite{deep_factors_gp}, \cite{multi_horizon_quantile}) and forecasting competitions results (\cite{extreme_event_for_nn}, \cite{m4_competition})  have shown the relevance of using deep learning based models to obtain better results than with ETS or ARIMA methods.
+
+Deep Learning probabilistic forecasting of renewable energy production is a subject that has already been covered by various scientific teams, with different contexts, goals and techniques. These various results has been compiled and analysed in different scientific review papers. Probabilistic forecasting in the context of wind turbines generation has been reviewed in \cite{review_prob_for_wind}. Deep learning techniques for renewable energy forecasting has been reviewed in \cite{review_deep_renewable_for}. These reviews exposes notably a great number of different models.
+
+Regarding the implementation of these techniques, deep learning frameworks, such as \textit{Tensorflow} \cite{tensorflow}, \textit{MXNet} \cite{mxnet} and \textit{Pytorch} \cite{pytorch} are popular solutions. Considering  the time series modeling, a  number of  commercial and open-source solutions exist but does not provides toolkits focused on modern deep learning.  For example the  \textit{R-forecast}  package  \cite{r_article}  provide a plethora of models and tooling for classical forecasting methods and contains neural forecasting models, however these pre-date modern deep learning methods and only contain stand-alone implementations of simple local models, they lack state-of-the-art architectures. 
+This lack of specific toolkit has been recently filled with \textit{GluonTS} (\url{https://gluon-ts.mxnet.io}) \cite{gluontsbible}, a deep learning library that bundles components, models and tools for time series applications such as point and probabilistic forecasting or anomaly detection. It relies on the deep-learning framework MXNet, developed by \textit{Amazon Web Services}.
+As it provides all the services needed to produce experiments and comparison of deep learning probabilistic forecasting models, it is the main implementation tool of this master thesis.
+
+
+\subsection{Problem Statement} \label{problem_statement}
+
+Before entering into solution description, we need to define mathematically in general the problem of time series deep-learning forecasting, whereabouts \textit{GluonTS} has been conceived. 
+
+As different types of models has fundamental differences in the way they express the problem, the mathematical formulation differs.
+Two mathematical formulation are presented, corresponding to two types of models found among the implemented models.
+The first mathematical formulation corresponds to the feed-forward models.
+The second mathematical formulation corresponds to the RNN models. 
+
+Models data is composed of certain number of time series in training data and in testing data. 
+In general the training and testing data is composed of the same time series (this affirmation is discussed in section \ref{datasets}). This situation is the one considered in this section.
+
+Let the following variables :
+
+\begin{itemize}%[label=$*$]
+    \item $I$ the number of time series considered
+    \item $T$ the number of time steps in time series
+    %\item T the number of time steps in time series
+    \item $x_{i,t}$ a scalar variable representing the value of the time series i at time step t.
+    %\item $\hat{x}_{i,t}$ a scalar variable representing the predicted value of the time series i at time step t.
+    %\item $\phi(x_{i,t}) : \mathbb{R} \to \mathbb{R}$, the density probability function of the variable $x_{i,t}$, which associate to a value of $x_{i,t}$ the corresponding probability.
+    %\item $\hat{\phi}(x_{i,t}) : \mathbb{R} \to \mathbb{R}$, the predicted density probability function of the variable $x_{i,t}$, which associate to a value of $x_{i,t}$ the corresponding probability.
+    \item $a, b, c, d, e$ specific values of $t$, with $e=T$
+    \item $t=0 < t=a < t=b < t=c < t=d < t=e$
+    \item $predict\_length = b-a$, fixed hyper parameter of the problem.
+    Indicates the number of time steps about which the models must make a prediction simultaneously.
+    \item $context\_length = c-b$, fixed hyper parameter of the problem.
+    Indicates the number of time steps that the model consider as input simultaneously.
+    %\item $\text{NN}_\theta : \mathbb{R}^n \to \mathbb{R}^m$,  the neural network, viewed as a function taking a vector of n values
+    %as input and giving a vector of m values of density of probability as output.
+    %\item $L : \mathbb{R} \times (\mathbb{R} \to \mathbb{R} ) \to \mathbb{R} $ the loss function taking a value and a density of probability as input and giving a loss value as output.
+    %The details of loss implementation are discussed in section \ref{loss}, the loss choose coming from the discussion about project goal in section \ref{goal}.
+    %\item $M([\phi_{x_P1},..,\phi_{x_Pn}],[{x_{O1}},..,{x_{On}}])$  the metric function which
+    %gives the value of metric for a vector of density of probability of predicted value of the variable x and  the corresponding vector of observed values of the variable x. 
+    %The details of metrics function are discussed in section \ref{metrics}
+
+\end{itemize}
+
+We also define $L : \mathbb{R} \times (\mathbb{R} \to \mathbb{R} ) \to \mathbb{R} $ the loss function taking a value and a probability distribution as input and giving a loss value as output,
+As example of function L, we can mention the negative log-likelihood :
+
+\begin{equation}
+    L(y, \phi(x) ) = - ln(\phi(x = y) )
+\end{equation}
+
+The details of loss implementation are discussed in section \ref{loss}.
+
+
+Each time series can be conceptually decomposed as two pieces. The first piece, $[x_{i,0},...,x_{i,d-1}]$  correspond to the part of the time series whereupon we want to train. The second piece $[x_{i,d},...,x_{i,e-1}]$ correspond to the part of the time series whereupon we want to test.
+The training set is composed only of the first pieces of each time series when the training set is composed of the two pieces (i.e. the totality of the time series).
+
+At the end of the training, the model neural network has been trained on the whole training data, and can be tested on the testing data. 
+
+%Depending of the type of model used, there are some significant differences in expressions. 
+%Two main cases are presented, the feed-forward models case (which belongs to the generative models category) and the RNN models case (which belongs to the discriminative models category).
+
+
+ %In contrast to classical model approach like ETS and ARIMA, which consider functions per time series individually, neural models further express one function, as a neural network, whose weights are trained among all time series given as input. The model learn from the whole training data. Each time series can be tested using this trained neural network.
+
+
+\subsubsection{First mathematical formulation : Feed Forward models}
+
+This formulation corresponds to the way the models that can be described as Feed Forward (\textit{Simple} and \textit{SimpleFeedForward }) compute a solution of the problem.
+
+\input{figure1_gen.tex}
+
+Considering an interval $[x_{i,a},...,x_{i,c-1}]$ in the time series i,
+our goal is to estimate the distribution of future window $[x_{i,b},...,x_{i,c-1}]$ given its history $[x_{i,a},...,x_{i,b-1}]$. The estimated distribution is defined as :
+
+\begin{equation} \label{distrib_proba_equ}
+    p_{\theta}(x_{i,b}, ..., x_{i,c-1} | x_{i,a}, ..., x_{i,b-1}) 
+\end{equation}
+
+Where $\theta$ denotes the models parameters.
+This distribution can be factorised as :
+
+\begin{equation} \label{distrib_proba_fact_equ}
+    p_{\theta}(x_{i,b}, ..., x_{i,c-1} | x_{i,a}, ..., x_{i,b-1}) =
+    \prod_{t=b}^{c-1}p_{\theta}(x_{i,t} | x_{i,a}, ..., x_{i,b-1})
+\end{equation}
+
+
+We define $\text{NN}_\theta$, a neural network parametrized by $\theta$. It hypothesis space is defined as $\{ h : \mathbb{R}^{b-a} \to R ^{k(c-b)}, h \in H \}$. With k the number of parameters needed to defines the output distribution. 
+We consider the case of a gaussian distribution, with $k=2$. The evaluation of $\text{NN}_\theta$ can be described as :
+
+
+\begin{equation}
+    [\mu_{\theta i,b},..,\mu_{\theta i,c-1},\sigma_{\theta i,b},..,\sigma_{\theta i,c-1}] = \text{NN}_\theta({x_{i,a}},..,{x_{i,b-1}})
+\end{equation}
+
+
+%The goal is the approximation of hidden variables $[{\phi}(x_{i,b-a}),..,{\phi}(x_{i,d-1})]$ :
+
+%\begin{equation}
+%    [\hat{\phi}(x_{i,b-a}),.., \hat{\phi}(x_{i,d-1})]  \approx [{\phi}(x_{i,b-a}),..,{\phi}(x_{i,d-1})] \forall i \in [1,I]
+%\end{equation}
+
+
+%The training of the neural network is composed of a succession of training steps involving one neural network prediction. The hypothesis space \textit{H} explored by this neural network N  is defined as \{$ h : \mathbb{R}^{b-a} \to (\mathbb{R} \to \mathbb{R} )^{c-b}, h \in H $\}.
+
+%A training step is mathematically defined in the following equation :
+
+%\begin{equation}
+%    [\hat{\phi}(x_{i,b}),..,\hat{\phi}(x_{i,c-1})] = N({x_{i,a}},..,{x_{i,b-1}}), a \in [0, d - (c-a)],  i \in [1,I]
+%\end{equation}
+
+%The hypothesis space \textit{H} explored by the neural network $\text{NN}_\theta$ parametrized by $\theta$  is defined as \{$ h : \mathbb{R}^{b-a} \to R ^{2(c-b)}, h \in H $\}.
+
+The estimated distribution of a variable $x_{i,t}$ of the future window ($t \in [b,c-1]$) is expressed as, with $\phi_{\mu,\sigma}: \mathbb{R} \to \mathbb{R} $ a gaussian function parametrized by parameters $\mu$ and $\sigma$ :
+
+\begin{equation}
+    p_{\theta}(x_{i,t} | x_{i,a}, ..., x_{i,b-1}) = \phi_{\mu_{\theta i,t},\sigma_{\theta i,t}}(x_{i,t})
+\end{equation}
+
+The estimated distribution of the future window as defined in equation \ref{distrib_proba_equ} is expressed as :
+
+\begin{equation}
+    p_{\theta}(x_{i,b}, ..., x_{i,c-1} | x_{i,a}, ..., x_{i,b-1})  = \prod_{t=b}^{c-1}\phi_{\mu_{\theta i,t},\sigma_{\theta i,t}}(x_{i,t})
+\end{equation}
+
+
+
+This estimation is performed for different intervals $[x_{i,a},...,x_{i,c-1}]$. We consider disjoint adjacent future windows, from the first possible future window $(b = context\_length)$, see figure \ref{fig:forecast1_start}, to the last possible future window $(b=d-predict\_length)$, see figure \ref{fig:forecast1_last}, and for all time series $i \in [0,I]$.
+ 
+ \input{figure1_start}
+\input{figure1_second}
+\input{figure1_last}
+
+Finally, the global loss of the estimation is defined as the sum, for each time series and each time step,  of the loss function $L$ with as argument the real value and the estimated distribution :
+
+
+\begin{equation}
+    loss(\theta) = \sum^{I}_{i=1}\sum^{d-1}_{t=b-a}L(x_{i,t},\phi_{\mu_{\theta i,t},\sigma_{\theta i,t}}(x_{i,t}))
+\end{equation}
+
+
+
+%These training steps are performed for each possible value of \textit{a}, and for each possible value of \textit{i}.
+
+
+
+%The final loss evaluated during training is defined as, with $\theta$ the parameters of the neural network N :
+
+%\begin{equation}
+%    loss(\theta) = \sum^{I}_{i=1}\sum^{d-1}_{t=b-a}L(x_{i,t},\hat{\phi}(x_{i,t}))
+%\end{equation}
+
+
+
+\subsubsection{Second mathematical formulation : RNN models}
+
+This formulation corresponds to the way the models that can be described as RNN (\textit{CanonicalRNN}) express the problem.
+
+\input{figure2_gen}
+
+%The goal is the approximation of hidden variables $[{\phi}(x_{i,0}),..,{\phi}(x_{i,d-1})]$ :
+
+Considering an interval $[x_{i,a},...,x_{i,c-1}]$ in the time series i,
+our goal is to estimate the distribution of window $[x_{i,a},...,x_{i,c-1}]$ given its hidden states $[h_{i,a},...,h_{i,c-1}]$. The estimated distribution is defined as :
+
+\begin{equation} \label{distrib2_proba_equ}
+    p_{\theta}(x_{i,a}, ..., x_{i,c-1} | h_{i,a}, ..., h_{i,c-1}) 
+\end{equation}
+
+Where $\theta$ denotes the models parameters.
+This distribution can be factorised as :
+
+\begin{equation} \label{distrib2_proba_fact_equ}
+    p_{\theta}(x_{i,a}, ..., x_{i,c-1} | h_{i,a}, ..., h_{i,c-1})  =
+    \prod_{t=a}^{c-1}p_{\theta}(x_{i,t} | h_{i,a}, ..., h_{i,t})
+\end{equation}
+
+We define $f_\theta$, a function parametrized by $\theta$. It hypothesis space is defined as $\{ h_f : \mathbb{R} \cross \mathbb{R} \to \mathbb{R} , h_f \in H_f \}$.
+It evaluation can be described as, for $t \in [a+1,c-1]$  :
+
+\begin{equation}
+    h_{i,t} = f_\theta({x_{i,t}},h_{i,t-1})
+\end{equation}
+
+We define $\text{g}_\theta$, a function parametrized by $\theta$. It hypothesis space is defined as $\{ h_g : \mathbb{R} \to \mathbb{R}^k , h_g \in H_g \}$. With k the number of parameters needed to defines the output distribution. 
+We consider the case of a gaussian distribution, with $k=2$.
+It evaluation can be described as, for $t \in [a+1,c-1]$ ::
+
+\begin{equation}
+    [\mu_{\theta i,t}, \sigma_{\theta i,t}] = g_\theta(h_{i,t})
+\end{equation}
+
+The estimated distribution of a variable $x_{i,t}$ of the interval ($t \in [a,c-1]$) is expressed as, with $\phi_{\mu,\sigma}: \mathbb{R} \to \mathbb{R} $ a gaussian function parametrized by parameters $\mu$ and $\sigma$ :
+
+\begin{equation}
+    p_{\theta}(x_{i,t} | h_{i,a}, ..., h_{i,t}) = \prod_{t=b}^{c-1} \phi_{\mu_{\theta i,t},\sigma_{\theta i,t}}(x_{i,t})
+\end{equation}
+
+The distribution of interval as defined in equation \ref{distrib2_proba_equ} is expressed as  :
+
+\begin{equation}
+     p_{\theta}(x_{i,a}, ..., x_{i,c-1} | h_{i,a}, ..., h_{i,c-1})  = \prod_{t=b}^{c-1} \phi_{\mu_{\theta i,t},\sigma_{\theta i,t}}(x_{i,t})
+\end{equation}
+
+This estimation is performed for different intervals $[x_{i,a},...,x_{i,c-1}]$. We consider disjoint adjacent interval, from the first possible future interval $(c = context\_length + predict\_length)$, to last possible future window $(c=d)$, and for all time series $i \in [0,I]$.
+
+
+Finally, the global loss of the estimation is defined as the sum, for each time series and each time step considered, of the loss function $L$ with as argument the real value and the estimated distribution :
+
+\begin{equation}
+    loss(\theta) = \sum^{I}_{i=1}\sum^{d-1}_{t=b-a}L(x_{i,t},\phi_{\mu_{\theta i,t},\sigma_{\theta i,t}}(x_{i,t}))
+\end{equation}
+
+
+%The final loss evaluated during training is defined as, with $\theta$ the parameters of the neural network N :
+
+%\begin{equation}
+%    loss = \sum^{I}_{i=1}\sum^{d-1}_{t=0}L(x_{i,t},\hat{\phi}(x_{i,t}))
+%\end{equation}
+
+
+
+%The neural network is trained by minimization of the loss as mathematically defined here :
+%The training pass of the neural network can be seen as the following mathematical expression :
+
+
+
+%The goal of the forecasting process is the minimization of this loss.
